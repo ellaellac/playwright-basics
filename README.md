@@ -1,1 +1,1 @@
-# palywright-basics
+# playwright-basics
