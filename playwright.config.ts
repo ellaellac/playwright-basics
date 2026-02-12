@@ -24,6 +24,7 @@ export default defineConfig({
   reporter: [
   ['list'], 
   ['html', { open: process.env.CI ? 'never' : 'on-failure' }], 
+  ['junit', { outputFile: 'results.xml' }],
   ['allure-playwright', { outputFolder: 'allure-results' }],
   ...(process.env.CI ? [['github'] as const] : [])
   ],                   

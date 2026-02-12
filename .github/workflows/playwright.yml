@@ -65,3 +65,28 @@ jobs:
             🔗 [View Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)
             Check the **test-results** artifact for the `trace.zip` forensic data.
           comment_tag: allure_report_link
+      - name: Generate Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: "results.xml"
+        if: always()
+
+      - name: Update README with Summary
+        if: always()
+        run: |
+          SUMMARY=$(npx junit-to-markdown results.xml) 
+          PASSED=$(grep -oP 'tests="\K[^"]+' results.xml | awk '{s+=$1} END {print s}')
+          FAILED=$(grep -oP 'failures="\K[^"]+' results.xml | awk '{s+=$1} END {print s}')
+
+          TABLE="| Total Tests | Passed ✅ | Failed ❌ |\n|---|---|---|\n| $PASSED | $((PASSED-FAILED)) | $FAILED |"
+
+          sed -i "//,//c\\n$TABLE\n" README.md
+
+      - name: Commit Updated README
+        if: always()
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git commit -m "docs: update test summary in README [skip ci]" || echo "No changes to commit"
+          git push
