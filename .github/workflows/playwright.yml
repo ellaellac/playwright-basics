@@ -52,29 +52,23 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
 
-      - name: Post Allure Report Link
-        if: always() && github.event_name == 'pull_request'
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: |
-            ### 📊 Test Report Ready!
-            🔗 [View Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)
-          comment_tag: allure_report_link
-
       - name: Update README with Summary
         if: always()
         run: |
-          # 1. Get raw numbers from results.xml
-          TOTAL=$(grep -oP 'tests="\K[0-9]+' results.xml | head -1)
-          FAILURES=$(grep -oP 'failures="\K[0-9]+' results.xml | head -1)
+          # 1. Extract numbers safely. If file is missing, default to 0.
+          TOTAL=$(grep -oP 'tests="\K[0-9]+' results.xml | head -1 || echo 0)
+          FAILURES=$(grep -oP 'failures="\K[0-9]+' results.xml | head -1 || echo 0)
+
+          # 2. Handle empty variables and math
+          TOTAL=${TOTAL:-0}
+          FAILURES=${FAILURES:-0}
           PASSED=$((TOTAL - FAILURES))
           LAST_RUN=$(date +'%Y-%m-%d %H:%M:%S')
 
-          # 2. Build the Table
+          # 3. Create the Table
           TABLE="| Total Tests | Passed ✅ | Failed ❌ | Last Run |\n|---|---|---|---|\n| $TOTAL | $PASSED | $FAILURES | $LAST_RUN |"
 
-          # 3. Replace text between the invisible markers
-          # Note: We use the actual markers in the sed command
+          # 4. Use a stable sed command with the markers
           sed -i "//,//c\\n$TABLE\n" README.md
 
       - name: Commit Updated README
@@ -83,5 +77,4 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add README.md
-          # Only commit if the README actually changed
-          git diff --quiet && git diff --staged --quiet || (git commit -m "docs: update test summary [skip ci]" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m
