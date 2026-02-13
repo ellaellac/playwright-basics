@@ -9,7 +9,6 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    # Required for GitHub Pages and PR Comments
     permissions:
       contents: write
       pull-requests: write
@@ -27,8 +26,6 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        # We use 'always()' later, but we need to ensure this doesn't
-        # stop the whole job if a test fails
         run: npx playwright test
         continue-on-error: true
 
@@ -37,16 +34,15 @@ jobs:
         if: always()
         with:
           name: playwright-debug-data
-          # Fixed the path syntax: use a pipe '|' for multiple lines
           path: |
             playwright-report/
             test-results/
             allure-results/
+            results.xml
           retention-days: 7
 
       - name: Generate Allure Report
         if: always()
-        # Pinning to 2.29.0 to avoid Allure 3 syntax errors
         run: npx allure-commandline@2.29.0 generate allure-results --clean -o allure-report
 
       - name: Deploy to GitHub Pages
@@ -63,23 +59,22 @@ jobs:
           message: |
             ### 📊 Test Report Ready!
             🔗 [View Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)
-            Check the **test-results** artifact for the `trace.zip` forensic data.
           comment_tag: allure_report_link
-      - name: Generate Test Summary
-        uses: test-summary/action@v2
-        with:
-          paths: "results.xml"
-        if: always()
 
       - name: Update README with Summary
         if: always()
         run: |
-          SUMMARY=$(npx junit-to-markdown results.xml) 
-          PASSED=$(grep -oP 'tests="\K[^"]+' results.xml | awk '{s+=$1} END {print s}')
-          FAILED=$(grep -oP 'failures="\K[^"]+' results.xml | awk '{s+=$1} END {print s}')
+          # 1. Get raw numbers from results.xml
+          TOTAL=$(grep -oP 'tests="\K[0-9]+' results.xml | head -1)
+          FAILURES=$(grep -oP 'failures="\K[0-9]+' results.xml | head -1)
+          PASSED=$((TOTAL - FAILURES))
+          LAST_RUN=$(date +'%Y-%m-%d %H:%M:%S')
 
-          TABLE="| Total Tests | Passed ✅ | Failed ❌ |\n|---|---|---|\n| $PASSED | $((PASSED-FAILED)) | $FAILED |"
+          # 2. Build the Table
+          TABLE="| Total Tests | Passed ✅ | Failed ❌ | Last Run |\n|---|---|---|---|\n| $TOTAL | $PASSED | $FAILURES | $LAST_RUN |"
 
+          # 3. Replace text between the invisible markers
+          # Note: We use the actual markers in the sed command
           sed -i "//,//c\\n$TABLE\n" README.md
 
       - name: Commit Updated README
@@ -88,5 +83,5 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add README.md
-          git commit -m "docs: update test summary in README [skip ci]" || echo "No changes to commit"
-          git push
+          # Only commit if the README actually changed
+          git diff --quiet && git diff --staged --quiet || (git commit -m "docs: update test summary [skip ci]" && git push)
