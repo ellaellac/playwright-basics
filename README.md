@@ -2,10 +2,9 @@
 
 ## 📊 Latest Test Results
 
-| Total Tests | Passed ✅ | Failed ❌ |
-| ----------- | --------- | --------- |
-| --          | --        | --        |
-
+| Total Tests | Passed ✅ | Failed ❌ | Last Run |
+| ----------- | --------- | --------- | -------- |
+| --          | --        | --        | --       |
 ![Playwright Tests](https://github.com/ellaellac/playwright-basics/actions/workflows/playwright.yml/badge.svg)
 [![Allure Report](https://img.shields.io/badge/Allure_Report-Live-green?style=flat&logo=allure)](https://ellaellac.github.io/playwright-basics/)
 
